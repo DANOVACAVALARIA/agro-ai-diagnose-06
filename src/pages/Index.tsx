@@ -4,75 +4,40 @@ import { Camera, Upload, FileText, History, Leaf } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import ImageUpload from '@/components/ImageUpload';
-import CropSelector from '@/components/CropSelector';
 import DiagnosisResult from '@/components/DiagnosisResult';
 import DiagnosisHistory from '@/components/DiagnosisHistory';
+import { processImage } from '@/utils/imageProcessor';
 
 const Index = () => {
-  const [currentStep, setCurrentStep] = useState('upload'); // upload, selecting, diagnosis, history
+  const [currentStep, setCurrentStep] = useState('upload'); // upload, processing, diagnosis, history
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [selectedCrop, setSelectedCrop] = useState<string>('');
   const [diagnosisData, setDiagnosisData] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleImageSelected = (imageUrl: string) => {
+  const handleImageSelected = async (imageUrl: string) => {
     setSelectedImage(imageUrl);
-    setCurrentStep('selecting');
-  };
+    setCurrentStep('processing');
+    setError(null);
 
-  const handleCropSelected = () => {
-    // Simular chamada para API de diagnóstico
-    setTimeout(() => {
-      const mockDiagnosis = {
-        plantName: getCropName(selectedCrop),
-        disease: getRandomDisease(selectedCrop),
-        severity: Math.floor(Math.random() * 100),
-        confidence: 85 + Math.floor(Math.random() * 15),
-        recommendations: getRecommendations(selectedCrop),
-        image: selectedImage
-      };
-      setDiagnosisData(mockDiagnosis);
+    try {
+      console.log('Processando imagem com IA...');
+      const result = await processImage(imageUrl);
+      console.log('Resultado do diagnóstico:', result);
+      
+      setDiagnosisData(result);
       setCurrentStep('diagnosis');
-    }, 1500);
-  };
-
-  const getCropName = (cropId: string) => {
-    const names = {
-      alface: 'Alface',
-      mandioca: 'Mandioca',
-      tomate: 'Tomate',
-      cenoura: 'Cenoura',
-      milho: 'Milho'
-    };
-    return names[cropId as keyof typeof names] || 'Cultura';
-  };
-
-  const getRandomDisease = (crop: string) => {
-    const diseases = {
-      alface: ['Míldio', 'Queima das pontas', 'Podridão mole'],
-      mandioca: ['Bacteriose', 'Superalongamento', 'Ácaros'],
-      tomate: ['Pinta-preta', 'Requeima', 'Oídio'],
-      cenoura: ['Queima das folhas', 'Alternária', 'Podridão'],
-      milho: ['Ferrugem', 'Mancha foliar', 'Enfezamento']
-    };
-    const cropDiseases = diseases[crop as keyof typeof diseases] || ['Doença não identificada'];
-    return cropDiseases[Math.floor(Math.random() * cropDiseases.length)];
-  };
-
-  const getRecommendations = (crop: string) => {
-    return [
-      'Remover plantas infectadas imediatamente',
-      'Aplicar fungicida específico conforme orientação técnica',
-      'Melhorar ventilação entre as plantas',
-      'Evitar irrigação nas folhas',
-      'Monitorar clima e umidade'
-    ];
+    } catch (error) {
+      console.error('Erro no diagnóstico:', error);
+      setError('Erro ao processar a imagem. Tente novamente.');
+      setCurrentStep('upload');
+    }
   };
 
   const resetFlow = () => {
     setCurrentStep('upload');
     setSelectedImage(null);
-    setSelectedCrop('');
     setDiagnosisData(null);
+    setError(null);
   };
 
   return (
@@ -87,7 +52,7 @@ const Index = () => {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">agro.IA</h1>
-                <p className="text-sm text-gray-600">Diagnóstico Inteligente de Hortaliças</p>
+                <p className="text-sm text-gray-600">Diagnóstico Inteligente de Plantas</p>
               </div>
             </div>
             <Button
@@ -104,13 +69,28 @@ const Index = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {error && (
+          <div className="mb-6 max-w-2xl mx-auto">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <h4 className="font-medium text-red-900 mb-2">❌ Erro</h4>
+              <p className="text-sm text-red-800">{error}</p>
+              <Button 
+                onClick={resetFlow}
+                className="mt-3 bg-red-500 hover:bg-red-600"
+              >
+                Tentar Novamente
+              </Button>
+            </div>
+          </div>
+        )}
+
         {currentStep === 'upload' && (
           <div className="max-w-2xl mx-auto">
             <Card className="shadow-xl border-0">
               <CardHeader className="text-center bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-t-lg">
                 <CardTitle className="text-2xl">Diagnosticar Planta</CardTitle>
                 <p className="text-green-100">
-                  Tire uma foto da sua hortaliça para análise
+                  Tire uma foto da sua planta para análise com IA
                 </p>
               </CardHeader>
               <CardContent className="p-8">
@@ -120,13 +100,27 @@ const Index = () => {
           </div>
         )}
 
-        {currentStep === 'selecting' && (
-          <CropSelector
-            selectedImage={selectedImage}
-            selectedCrop={selectedCrop}
-            onCropChange={setSelectedCrop}
-            onProceed={handleCropSelected}
-          />
+        {currentStep === 'processing' && (
+          <div className="max-w-2xl mx-auto">
+            <Card className="shadow-xl border-0">
+              <CardContent className="p-12 text-center">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-green-500 mx-auto mb-4"></div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  Analisando sua planta...
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  Nossa IA está processando a imagem para identificar possíveis problemas
+                </p>
+                {selectedImage && (
+                  <img
+                    src={selectedImage}
+                    alt="Imagem sendo processada"
+                    className="w-32 h-32 object-cover rounded-lg mx-auto opacity-75"
+                  />
+                )}
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {currentStep === 'diagnosis' && diagnosisData && (
@@ -153,7 +147,7 @@ const Index = () => {
               © 2025 agro.IA - Tecnologia a serviço da agricultura
             </p>
             <p className="text-sm text-gray-400 mt-2">
-              Suporte à tomada de decisão para pequenos e médios produtores
+              Diagnóstico inteligente com IA para plantas e cultivos
             </p>
           </div>
         </div>
